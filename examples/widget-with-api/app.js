@@ -6,37 +6,39 @@ $(document).ready(function() {
     );
 
     var userProfile;
+    var hash = lock.parseHash();
+    if (hash) {
+        if (hash.error) {
+            console.log("There was an error logging in", hash.error);
+        }
+        else {
+            lock.getProfile(hash.id_token, function (err, profile) {
+                if (err) {
+                    console.log('Cannot get user', err);
+                    return;
+                }
+                userProfile = profile;
+                // Save the JWT token.
+                localStorage.setItem('id_token', hash.id_token);
+                
+                $('.login-box').hide();
+                $('.logged-in-box').show();
+                $('.name').text(profile.name);
+                $('.avatar').attr('src', profile.picture);
+            });
+        }
+    }
 
     $('.btn-login').click(function(e) {
       e.preventDefault();
-      lock.showSignin(function(err, profile, token) {
-        if (err) {
-          // Error callback
-          console.log("There was an error");
-          alert("There was an error logging in");
-        } else {
-          // Success calback
-
-          // Save the JWT token.
-          localStorage.setItem('userToken', token);
-
-          // Save the profile
-          userProfile = profile;
-
-          $('.login-box').hide();
-          $('.logged-in-box').show();
-          $('.nickname').text(profile.nickname);
-          $('.nickname').text(profile.name);
-          $('.avatar').attr('src', profile.picture);
-        }
-      });
+      lock.show();
     });
 
     $.ajaxSetup({
       'beforeSend': function(xhr) {
-        if (localStorage.getItem('userToken')) {
+        if (localStorage.getItem('id_token')) {
           xhr.setRequestHeader('Authorization',
-                'Bearer ' + localStorage.getItem('userToken'));
+                'Bearer ' + localStorage.getItem('id_token'));
         }
       }
     });
