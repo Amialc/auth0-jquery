@@ -2,39 +2,53 @@ $(document).ready(function() {
       var lock = new Auth0Lock(
       // All these properties are set in auth0-variables.js
       AUTH0_CLIENT_ID,
-      AUTH0_DOMAIN
+      AUTH0_DOMAIN,
+      {
+        auth: {
+          params: { scope: 'openid' }
+        }
+      }
     );
 
     var userProfile;
 
     $('.btn-login').click(function(e) {
       e.preventDefault();
-      lock.show({ authParams: { scope: 'openid' } });	
+      lock.show();	
     });
-    var hash = lock.parseHash(window.location.hash);
 
-    if (hash) {
-      if (hash.error) {
-        console.log("There was an error logging in", hash.error);
-        alert('There was an error: ' + hash.error + '\n' + hash.error_description);
-      } else {
-        //save the token in the session:
-        localStorage.setItem('id_token', hash.id_token);
-      }
-    }
-	    //retrieve the profile:
+    lock.on("authenticated", function(authResult) {
+      lock.getProfile(authResult.idToken, function(error, profile) {
+        if (error) {
+          // Handle error
+          return;
+        }
+
+        localStorage.setItem('id_token', authResult.idToken);
+        localStorage.setItem('profile', JSON.stringify(profile));
+        userProfile = profile;
+        showLoggedIn();
+      });
+    });
+
+	  //retrieve the profile:
     var id_token = localStorage.getItem('id_token');
     if (id_token) {
       lock.getProfile(id_token, function (err, profile) {
-      if (err) {
-        return alert('There was an error geting the profile: ' + err.message);
-      }
+        if (err) {
+          return alert('There was an error geting the profile: ' + err.message);
+        }
+        
+        userProfile = profile;
+        showLoggedIn();          	
+      });
+    }
+
+    function showLoggedIn() {
       $('.login-box').hide();
       $('.logged-in-box').show();
-      $('.name').text(profile.name);
-      $('.avatar').attr('src', profile.picture);
-            	
-      });
+      $('.name').text(userProfile.name);
+      $('.avatar').attr('src', userProfile.picture);
     }
 
     $.ajaxSetup({
@@ -57,6 +71,4 @@ $(document).ready(function() {
         alert("You need to download the server seed and start it to call this API");
       });
     });
-
-
 });

@@ -3,30 +3,52 @@ $(document).ready(function() {
       AUTH0_CLIENT_ID,
       AUTH0_DOMAIN
     );
+    var auth0 = new Auth0({
+        domain: AUTH0_DOMAIN,
+        clientID: AUTH0_CLIENT_ID,
+    });
 
     var userProfile;
 
-    var hash = lock.parseHash();
-    if (hash) {
-        if (hash.error) {
-            console.log("There was an error logging in", hash.error);
+    lock.on("authenticated", function(authResult) {
+      lock.getProfile(authResult.idToken, function(error, profile) {
+        if (error) {
+          // Handle error
+          return;
         }
-        else {
-            lock.getProfile(hash.id_token, function (err, profile) {
+
+        localStorage.setItem('id_token', authResult.idToken);
+        localStorage.setItem('profile', JSON.stringify(profile));
+        userProfile = profile;
+        showLoggedIn();
+        getDelegationToken();
+      });
+    });
+
+    //if user already authenticated (have id_token)
+    getDelegationToken();
+    
+    $('.btn-login').click(function(e) {
+      e.preventDefault();
+      lock.show();
+    });
+
+    function getDelegationToken() {
+        var id_token = localStorage.getItem('id_token');
+        if (id_token) {
+            lock.getProfile(id_token, function (err, profile) {
                 if (err) {
                     console.log('Cannot get user', err);
                     return;
                 }
-                // Save the JWT token.
-                localStorage.setItem('id_token', hash.id_token);
-                var idToken = hash.id_token;
-                console.log("Auth0 token", idToken);
+
+                console.log("Auth0 token", id_token);
                 var delegationOptions = {
-                    id_token: idToken,
+                    id_token: id_token,
                     api: API_TYPE
                 };
-                lock.getClient().getDelegationToken(delegationOptions,
-                    function(err, thirdPartyApiToken) {
+                auth0.getDelegationToken(delegationOptions,
+                    function (err, thirdPartyApiToken) {
                         if (err) {
                             console.log("There was an error getting a delegation token: " + JSON.stringify(err));
                         } else {
@@ -36,23 +58,20 @@ $(document).ready(function() {
                     });
                 // Save the profile
                 userProfile = profile;
-
-                $('.login-box').hide();
-                $('.logged-in-box').show();
-                $('.name').text(profile.name);
+                showLoggedIn();
             });
         }
     }
 
-    $('.btn-login').click(function(e) {
-      e.preventDefault();
-      lock.show();
-    });
-
+    function showLoggedIn() {
+        $('.login-box').hide();
+        $('.logged-in-box').show();
+        $('.name').text(userProfile.name);
+    }
 
     $('.btn-api').click(function(e) {
         // Just call your API here. The header will be sent
-    })
+    });
 
 
 });
